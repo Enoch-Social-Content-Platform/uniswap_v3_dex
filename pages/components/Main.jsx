@@ -10,8 +10,13 @@ import BeatLoader from "react-spinners/BeatLoader";
 import { getWethContract, getDaiContract, getPrice, runSwap } from '../services/AlphaRouterService'
 
 function Main() {
+
+  const [isConnected, setIsConnected] = useState(false);
+  const [hasMetamask, setHasMetamask] = useState(false);
+  const [signer, setSigner] = useState(undefined);
+
     const [provider, setProvider] = useState(undefined)
-    const [signer, setSigner] = useState(undefined)
+    // const [signer, setSigner] = useState(undefined)
     const [signerAddress, setSignerAddress] = useState(undefined)
 
     const [slippageAmount, setSlippageAmount] = useState(2)
@@ -27,16 +32,21 @@ function Main() {
     const [daiContract, setDaiContract] = useState(undefined)
     const [wethAmount, setWethAmount] = useState(undefined)
     const [daiAmount, setDaiAmount] = useState(undefined)
-  
-  
-  
+
+
     useEffect(() => {
       const init = async () => {
-        const provider = await new ethers.providers.Web3Provider(window.ethereum)
-        setProvider(provider)
+        if (typeof window.ethereum !== "undefined") {
+          console.log("**@ useeffect 1 ")
+          setHasMetamask(true);
+        }
+        console.log("**@ useeffect 2 ")
 
+
+        // const provider = await new ethers.providers.Web3Provider(window.ethereum)
+        // setProvider(provider)
+  
         const wethContract = getWethContract()
-        console.log("**@ wethcontract is , ",wethContract);
         setWethContract(wethContract)
   
         const daiContract = getDaiContract()
@@ -44,19 +54,52 @@ function Main() {
       }
       init()
     }, [])
+
+    async function connect() {
+      console.log("**@ connect function called")
+      if (typeof window.ethereum !== "undefined") {
+        try {
+          await ethereum.request({ method: "eth_requestAccounts" });
+          const provider =await  new ethers.providers.Web3Provider(window.ethereum);
+          const signer =await  provider.getSigner();
+          console.log("**@ connect signer is , ",signer);
+    
+         const address = await signer.getAddress()
+         console.log("**@ connect signer address  is , ",address);
+         setSigner(signer)
+
+         setSignerAddress(address)
+         setIsConnected(true);
+
+
+            // todo: connect weth and dai contracts
+           await  wethContract.balanceOf(address)
+              .then(res => {
+                setWethAmount( Number(ethers.utils.formatEther(res)) )
+              })
+    
+           await  daiContract.balanceOf(address)
+              .then(res => {
+                setDaiAmount( Number(ethers.utils.formatEther(res)) )
+              })
+        } catch (e) {
+          console.log("**@ connection error , ",e);
+        }
+      } else {
+        setIsConnected(false);
+      }
+    }
   
     const getSigner = async provider => {
+      console.log("**@ getSigner called with provider , ",provider);
       provider.send("eth_requestAccounts", []);
-      const signer = provider.getSigner();
+      const signer =await  provider.getSigner();
       setSigner(signer)
-    }
-    const isConnected = () => signer !== undefined
-    const getWalletAddress = () => {
-      signer.getAddress()
-        .then(address => {
-          setSignerAddress(address)
 
-          wethContract.balanceOf(address)
+      signer.getAddress()
+      .then(address => {  
+        // todo: connect weth and dai contracts
+        wethContract.balanceOf(address)
           .then(res => {
             setWethAmount( Number(ethers.utils.formatEther(res)) )
           })
@@ -65,32 +108,54 @@ function Main() {
           .then(res => {
             setDaiAmount( Number(ethers.utils.formatEther(res)) )
           })
+
+      })
+    }
+    // const isConnected = () => signer !== undefined
+
+
+    const getWalletAddress = () => {
+      signer.getAddress()
+        .then(address => {  
+          // todo: connect weth and dai contracts
+          wethContract.balanceOf(address)
+            .then(res => {
+              setWethAmount( Number(ethers.utils.formatEther(res)) )
+            })
+
+          daiContract.balanceOf(address)
+            .then(res => {
+              setDaiAmount( Number(ethers.utils.formatEther(res)) )
+            })
+  
         })
-
-
     }
   
     if (signer !== undefined) {
-      getWalletAddress()
+      // getWalletAddress()
     }
 
-    const getSwapPrice = (inputAmount) => {
-        setLoading(true)
-        setInputAmount(inputAmount)
-    
-        const swap = getPrice(
-          inputAmount,
-          slippageAmount,
-          Math.floor(Date.now()/1000 + (deadlineMinutes * 60)),
-          signerAddress
-        ).then(data => {
-          setTransaction(data[0])
-          setOutputAmount(data[1])
-          setRatio(data[2])
-          setLoading(false)
-        })
-      }
   
+    const getSwapPrice = (inputAmount,signerAddress) => {
+      setLoading(true)
+      setInputAmount(inputAmount);
+
+      getWalletAddress();
+
+      console.log("**@ about to call swap price , signerAddress is , ",signerAddress)
+  
+      const swap = getPrice(
+        inputAmount,
+        slippageAmount,
+        Math.floor(Date.now()/1000 + (deadlineMinutes * 60)),
+        signerAddress
+      ).then(data => {
+        setTransaction(data[0])
+        setOutputAmount(data[1])
+        setRatio(data[2])
+        setLoading(false)
+      })
+    }
 
     return (
         <div className="App">
@@ -108,7 +173,7 @@ function Main() {
                   provider={provider}
                   isConnected={isConnected}
                   signerAddress={signerAddress}
-                  getSigner={getSigner}
+                  connect={connect}
                 />
               </div>
               <div className="my-2 buttonContainer">
@@ -141,14 +206,15 @@ function Main() {
                   tokenName="WETH"
                   getSwapPrice={getSwapPrice}
                   signer={signer}
-                  balance={wethAmount} />
+                  balance={wethAmount}
+                  signerAddress={signerAddress} />
                 <CurrencyField
                   field="output"
                   tokenName="DAI"
                   value={outputAmount}
                   signer={signer}
                   balance={daiAmount}
-                  spinner={BeatLoader}
+                  Spinner={BeatLoader}
                   loading={loading} />
               </div>
     
@@ -161,7 +227,7 @@ function Main() {
               </div>
     
               <div className="swapButtonContainer">
-                {isConnected() ? (
+                {isConnected ? (
                   <div
                     onClick={() => runSwap(transaction, signer)}
                     className="swapButton"

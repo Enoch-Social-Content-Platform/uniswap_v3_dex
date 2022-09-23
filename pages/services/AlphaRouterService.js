@@ -3,8 +3,12 @@ const { Token, CurrencyAmount, TradeType, Percent } = require('@uniswap/sdk-core
 const { ethers, BigNumber } = require('ethers')
 const JSBI = require('jsbi')
 const ERC20ABI = require('../ABIS/erc20ABI.json');
+const { abi: IUniswapV3PoolABI } = require('@uniswap/v3-core/artifacts/contracts/interfaces/IUniswapV3Pool.sol/IUniswapV3Pool.json')
+const { abi: SwapRouterABI} = require('@uniswap/v3-periphery/artifacts/contracts/interfaces/ISwapRouter.sol/ISwapRouter.json')
 
-const V3_SWAP_ROUTER_ADDRESS = '0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45'
+
+const V3_SWAP_ROUTER_ADDRESS = "0xE592427A0AEce92De3Edee1F18E0157C05861564"
+const POOL_ADDRESS="0x90AD1A6363707bdc6a868D529E31b1D0a609D4c2"
 const REACT_APP_INFURA_URL_TESTNET = "https://ropsten.infura.io/v3/988dc1afceb64337a0110c0ed2175378"
 
 const chainId = 3
@@ -27,7 +31,8 @@ const DAI = new Token(chainId, address1, decimals1, symbol1, name1)
 
 export const getWethContract = () => new ethers.Contract(address0, ERC20ABI, web3Provider)
 export const getDaiContract = () => new ethers.Contract(address1, ERC20ABI, web3Provider)
-
+export const getPoolContract = () => new ethers.Contract(POOL_ADDRESS, IUniswapV3PoolABI, web3Provider)
+export const getSwapRouterContract =()=>new ethers.Contract(V3_SWAP_ROUTER_ADDRESS, SwapRouterABI, web3Provider)
 export const getPrice = async (inputAmount, slippageAmount, deadline, walletAddress) => {
   const percentSlippage = new Percent(slippageAmount, 100)
   const wei = ethers.utils.parseUnits(inputAmount.toString(), decimals0)
@@ -47,14 +52,16 @@ export const getPrice = async (inputAmount, slippageAmount, deadline, walletAddr
   const transaction = {
     data: route.methodParameters.calldata,
     to: V3_SWAP_ROUTER_ADDRESS,
-    value: BigNumber.from(route.methodParameters.value),
+    value: BigNumber.from(route.methodParameters.value).toString(),
     from: walletAddress,
-    gasPrice: BigNumber.from(route.gasPriceWei),
+    gasPrice: ethers.utils.hexlify(1000000),
     gasLimit: ethers.utils.hexlify(1000000)
   }
 
+  console.log("**@ making tx , transaction is , ",transaction);
+
   const quoteAmountOut = route.quote.toFixed(6)
-  const ratio = (inputAmount / quoteAmountOut).toFixed(3)
+  const ratio = (inputAmount / quoteAmountOut).toFixed(10)
 
   return [
     transaction,
@@ -63,14 +70,12 @@ export const getPrice = async (inputAmount, slippageAmount, deadline, walletAddr
   ]
 }
 
-export const runSwap = async (transaction, signer) => {
-  const approvalAmount = ethers.utils.parseUnits('10', 18).toString()
-  const contract0 = getWethContract()
-  await contract0.connect(signer).approve(
-    V3_SWAP_ROUTER_ADDRESS,
-    approvalAmount
-  )
+export const runSwap = async (transaction,signer,amountIn,deadlineInMinutes,walletAddress,amountOutMin) => {
+
+  console.log("**@ runswap called with transaction , ",transaction);
+  console.log("**@ signer2 is , ",signer);
 
   signer.sendTransaction(transaction)
+
 }
 

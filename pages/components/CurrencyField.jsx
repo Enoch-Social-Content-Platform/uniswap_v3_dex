@@ -1,6 +1,6 @@
 import React from 'react'
 
-function CurrencyField({getSwapPrice,loading,value,tokenName,field,balance}) {
+function CurrencyField({getSwapPrice,loading,value,tokenName,field,balance,Spinner,signerAddress}) {
     const getPrice = (value) => {
         getSwapPrice(value)
       }
@@ -10,7 +10,7 @@ function CurrencyField({getSwapPrice,loading,value,tokenName,field,balance}) {
           <div className="col-md-6 numberContainer">
             {loading ? (
               <div className="spinnerContainer">
-                <props.spinner />
+                <Spinner />
               </div>
             ) : (
               <input
