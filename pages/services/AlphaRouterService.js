@@ -7,7 +7,7 @@ const { abi: IUniswapV3PoolABI } = require('@uniswap/v3-core/artifacts/contracts
 const { abi: SwapRouterABI} = require('@uniswap/v3-periphery/artifacts/contracts/interfaces/ISwapRouter.sol/ISwapRouter.json')
 
 
-const V3_SWAP_ROUTER_ADDRESS = "0xE592427A0AEce92De3Edee1F18E0157C05861564"
+const V3_SWAP_ROUTER_ADDRESS = "0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45"
 const POOL_ADDRESS="0x90AD1A6363707bdc6a868D529E31b1D0a609D4c2"
 const REACT_APP_INFURA_URL_TESTNET = "https://ropsten.infura.io/v3/988dc1afceb64337a0110c0ed2175378"
 
@@ -54,7 +54,7 @@ export const getPrice = async (inputAmount, slippageAmount, deadline, walletAddr
     to: V3_SWAP_ROUTER_ADDRESS,
     value: BigNumber.from(route.methodParameters.value).toString(),
     from: walletAddress,
-    gasPrice: ethers.utils.hexlify(1000000),
+    gasPrice: BigNumber.from(route.gasPriceWei),
     gasLimit: ethers.utils.hexlify(1000000)
   }
 
